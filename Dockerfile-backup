@@ -1,0 +1,4 @@
+FROM offen/docker-volume-backup:latest
+
+# Install mariadb-client to allow dumping the database
+RUN apk add --no-cache mariadb-client

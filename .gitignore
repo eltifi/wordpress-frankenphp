@@ -84,3 +84,7 @@ wp-content/*/backups/
 upgrade-temp-backup/
 public/worker.php.bak
 conf.d/*.bak
+
+# Minio storage
+.minio.sys/
+/storage/

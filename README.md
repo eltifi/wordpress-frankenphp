@@ -199,7 +199,76 @@ The local `wp-content/` directory is copied directly into the Docker image durin
 | `MYSQL_USER` | Database user to create | `wordpress_user` |
 | `MYSQL_PASSWORD` | Password for the user | *(matches WP_DB_PASSWORD)* |
 
+#### Backup Configuration
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BACKUP_CRON_EXPRESSION` | Cron schedule for backups | `0 */12 * * *` |
+| `BACKUP_RETENTION_DAYS` | Days to keep backups | `7` |
+| `BACKUP_FILENAME_DB` | Filename pattern for DB backups | `wordpress-db-backup...` |
+| `BACKUP_FILENAME_CONTENT` | Filename pattern for content backups | `wordpress-content-backup...` |
+| `AWS_S3_BUCKET_NAME` | S3/Minio bucket name | `wordpress-backups` |
+| `AWS_ENDPOINT` | S3/Minio endpoint | `minio:9000` |
+| `AWS_ACCESS_KEY_ID` | S3 Access Key | `minioadmin` |
+| `AWS_SECRET_ACCESS_KEY` | S3 Secret Key | `minioadmin` |
+| `AWS_S3_FORCE_PATH_STYLE` | Force path style (required for Minio) | `true` |
+
+#### Zero-Downtime Backups (Read Replica)
+To prevent site slowdowns during backups, this project uses a **Primary-Replica** architecture.
+- `mysql`: Primary database (handling live traffic).
+- `mysql-replica`: Real-time replica.
+**Backups are performed on the Replica**, ensuring zero performance impact on the live site.
+
+#### S3 Uploads Configuration (Media Offloading)
+WordPress media uploads can be offloaded to S3/Minio to ensure statelessness.
+**Default behavior**: Uploads are stored in the local Docker volume `wp-content/uploads`. Set `ENABLE_S3_UPLOADS=true` to switch to S3.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENABLE_S3_UPLOADS` | Switch to S3 storage | `false` |
+| `S3_UPLOADS_BUCKET` | Bucket for uploads | `wordpress-uploads` |
+| `S3_UPLOADS_REGION` | S3 Region | `us-east-1` |
+| `S3_UPLOADS_ENDPOINT` | S3 Endpoint | `http://minio:9000` |
+| `S3_UPLOADS_KEY` | S3 Key (defaults to AWS_ACCESS_KEY_ID) | `minioadmin` |
+| `S3_UPLOADS_SECRET` | S3 Secret (defaults to AWS_) | `minioadmin` |
+| `S3_UPLOADS_BUCKET_URL` | Public URL | `http://localhost...` |
+
 ## Troubleshooting
+
+### Backup & Restore
+
+**How to trigger a manual backup?**
+```bash
+docker compose exec backups backup
+```
+
+**Where are backups stored?**
+By default, in the local Minio instance. Access the Minio Console at [http://localhost:59001](http://localhost:59001) (User/Pass: `minioadmin`).
+
+**how to restore?**
+You will have one file: `wordpress-full-backup-*.tar.gz`.
+
+**1. Extract Backup**
+```bash
+tar -xzvf wordpress-full-backup-XH-XM-XS.tar.gz
+# This creates a folder (e.g., 'backup') containing 'database.sql' and 'wp-content/'
+```
+
+**2. Restore Database**
+```bash
+cat source/database.sql | docker compose exec -T mysql mysql -u wordpress_user -p[password] wordpress_db
+```
+
+**3. Restore wp-content**
+```bash
+# Replace the folder (ensure you backup the current one first)
+rm -rf wp-content/*
+cp -r source/wp-content/* wp-content/
+```
+
+**3. Restart** (if needed)
+```bash
+docker compose restart
+```
 
 ### Access Issues
 

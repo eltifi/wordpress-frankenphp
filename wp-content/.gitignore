@@ -60,3 +60,6 @@ Thumbs.db
 !/mu-plugins/
 !/index.html
 !/index.php
+
+# Minio storage
+/storage/

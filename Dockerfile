@@ -67,6 +67,15 @@ ENV WORDPRESS_FORCE_SSL_ADMIN="true"
 ENV WORDPRESS_FORCE_SSL_LOGIN="true"
 ENV WORDPRESS_CACHE_KEY_SALT=""
 
+# S3 Uploads Configuration
+ENV ENABLE_S3_UPLOADS="false"
+ENV S3_UPLOADS_BUCKET="wordpress-uploads"
+ENV S3_UPLOADS_REGION="us-east-1"
+ENV S3_UPLOADS_ENDPOINT="http://minio:9000"
+ENV S3_UPLOADS_BUCKET_URL=""
+# Secrets should be passed via environment, not hardcoded here
+
+
 # persistent dependencies
 RUN set -eux; \
     apk add --no-cache \
@@ -106,6 +115,15 @@ COPY wp-content/ /var/www/html/wp-content/
 RUN chown -R ${USER}:${USER} /var/www/html && \
     mkdir -p /data/caddy /config/caddy && \
     chown -R ${USER}:${USER} /data/caddy /config/caddy
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+# Install S3 Uploads plugin
+WORKDIR /var/www/html/wp-content
+RUN composer init --name="wordpress/custom-build" --description="Custom WordPress Build" --author="Automated <auto@example.com>" --type=project --no-interaction && \
+    composer config --no-plugins allow-plugins.composer/installers true && \
+    composer require humanmade/s3-uploads
 
 WORKDIR /var/www/html
 

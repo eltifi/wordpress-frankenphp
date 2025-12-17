@@ -10,6 +10,9 @@ services:
         dns:
             - 8.8.8.8
             - 1.1.1.1
+        build:
+            context: .
+            dockerfile: Dockerfile
         image: ghcr.io/eltifi/wordpress-frankenphp:latest
         restart: unless-stopped
         deploy:
@@ -101,6 +104,14 @@ services:
             WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
             WORDPRESS_DB_CHARSET: ${WORDPRESS_DB_CHARSET:-utf8mb4}
             WORDPRESS_DB_COLLATE: ${WORDPRESS_DB_COLLATE:-utf8mb4_unicode_ci}
+            # S3 Uploads Configuration
+            ENABLE_S3_UPLOADS: "${ENABLE_S3_UPLOADS:-false}"
+            S3_UPLOADS_BUCKET: "${S3_UPLOADS_BUCKET:-wordpress-uploads}"
+            S3_UPLOADS_REGION: "${S3_UPLOADS_REGION:-us-east-1}"
+            S3_UPLOADS_KEY: "${S3_UPLOADS_KEY:-${AWS_ACCESS_KEY_ID}}"
+            S3_UPLOADS_SECRET: "${S3_UPLOADS_SECRET:-${AWS_SECRET_ACCESS_KEY}}"
+            S3_UPLOADS_ENDPOINT: "${S3_UPLOADS_ENDPOINT:-${AWS_ENDPOINT}}"
+            S3_UPLOADS_BUCKET_URL: "${S3_UPLOADS_BUCKET_URL:-${AWS_ENDPOINT}/${S3_UPLOADS_BUCKET:-wordpress-uploads}}"
             # FrankenPHP configuration
             FORCE_HTTPS: ${FORCE_HTTPS:-0}
             # Worker mode: dramatically improves performance (~70% faster)
@@ -121,9 +132,9 @@ services:
             DEBUG_MODE: ${DEBUG_MODE:-}
             # Custom PHP Config Path (loading default + custom volume)
             PHP_INI_SCAN_DIR: ":/usr/local/etc/php/conf.d:/data/caddy/php"
-    #volumes:
-    #    - ./wp-content:/var/www/html/wp-content
-    #    - ./wp-config.php:/var/www/html/wp-config.php
+        #volumes:
+        #    - ./wp-content:/var/www/html/wp-content
+        #    - ./wp-config.php:/var/www/html/wp-config.php
 
     mysql:
         expose:
@@ -145,6 +156,10 @@ services:
                     cpus: '0.5'
                     memory: 1G
         command:
+            # Replication Config (Master)
+            - --log-bin=mysql-bin
+            - --server-id=1
+            # Standard Config
             - --character-set-server=utf8mb4
             - --collation-server=utf8mb4_unicode_ci
             # CONNECTION MANAGEMENT
@@ -162,7 +177,7 @@ services:
             # NETWORK PERFORMANCE
             - --max_allowed_packet=64M
             - --net_buffer_length=16K
-            # InnoDB (WordPress Primary Engine)
+            # InnoDB
             - --innodb_buffer_pool_size=512M
             - --innodb_buffer_pool_instances=8
             - --innodb_log_file_size=100M
@@ -170,45 +185,47 @@ services:
             - --innodb_flush_log_at_trx_commit=2
             - --innodb_file_per_table=1
             - --innodb_autoinc_lock_mode=2
-            - --innodb_read_io_threads=8
-            - --innodb_write_io_threads=8
-            - --innodb_io_capacity=500
-            - --innodb_io_capacity_max=1000
-            - --innodb_adaptive_hash_index=1
-            - --innodb_lock_wait_timeout=50
-            # MEMORY-EFFICIENT TABLE HANDLING
-            - --tmp_table_size=32M
-            - --max_heap_table_size=32M
-            - --thread_cache_size=100
-            - --thread_stack=256K
-            - --table_definition_cache=2000
-            - --table_open_cache=4000
-            # QUERY OPTIMIZATION (Safe for Normal Operations)
-            - --sort_buffer_size=2M
-            - --bulk_insert_buffer_size=16M
-            - --read_rnd_buffer_size=2M
-            - --read_buffer_size=512K
-            - --join_buffer_size=512K
-            - --binlog_cache_size=32K
-            # MyISAM (Minimal - WordPress uses InnoDB)
-            - --key_buffer_size=1M
-            # QUERY CACHE (Disabled in MariaDB 10.6+)
-            - --query_cache_type=OFF
-            # SQL COMPLIANCE
-            - --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
         environment:
             TZ: ${TZ:-America/New_York}
-            # Use WORDPRESS_DB_ variables to avoid duplication
             MYSQL_DATABASE: ${WORDPRESS_DB_NAME}
             MYSQL_USER: ${WORDPRESS_DB_USER}
             MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
             MYSQL_ROOT_PASSWORD: ${WORDPRESS_DB_PASSWORD}
             MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST:-localhost}
-            # Performance settings
             MYSQL_INITDB_SKIP_TZINFO: 'yes'
+            # Replication User Credentials
+            MYSQL_REPLICATION_USER: "replicator"
+            MYSQL_REPLICATION_PASSWORD: "${WORDPRESS_DB_PASSWORD}" # Reusing for simplicity or use separate var
         volumes:
             - mysql_data:/var/lib/mysql
             - ./seed:/docker-entrypoint-initdb.d
+            - ./mysql-init:/docker-entrypoint-initdb.d
+
+    mysql-replica:
+        image: mariadb:12
+        restart: unless-stopped
+        command:
+            - --server-id=2
+            - --read-only=1
+            - --log-bin=mysql-bin # Good practice for relays
+        environment:
+            TZ: ${TZ:-America/New_York}
+            MYSQL_ROOT_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+            # Replication Credentials to connect to Master
+            MYSQL_REPLICATION_USER: "replicator"
+            MYSQL_REPLICATION_PASSWORD: "${WORDPRESS_DB_PASSWORD}"
+        volumes:
+            - mysql_replica_data:/var/lib/mysql
+            # Init script for cloning
+            - ./scripts/init-replica.sh:/docker-entrypoint-initdb.d/init-replica.sh
+        depends_on:
+            mysql:
+                condition: service_healthy
+        healthcheck:
+            test: "mariadb-admin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
     redis:
         image: redis:alpine
@@ -256,8 +273,78 @@ services:
                     cpus: '0.25'
                     memory: 256M
 
+    backups:
+        build:
+            context: .
+            dockerfile: Dockerfile-backup
+        restart: unless-stopped
+        environment:
+            # Backup Configuration
+            BACKUP_CRON_EXPRESSION: "${BACKUP_CRON_EXPRESSION:-0 */12 * * *}"
+            BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
+            BACKUP_FILENAME: "wordpress-full-backup-%Y-%m-%dT%H-%M-%S.tar.gz"
+            # S3 / Minio Credentials
+            AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+            AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+            AWS_S3_BUCKET_NAME: "${AWS_S3_BUCKET_NAME}"
+            AWS_ENDPOINT: "${AWS_ENDPOINT}"
+            AWS_S3_FORCE_PATH_STYLE: "${AWS_S3_FORCE_PATH_STYLE:-true}"
+            AWS_S3_DISABLE_SSL: "${AWS_S3_DISABLE_SSL:-true}"
+            AWS_S3_INSECURE: "${AWS_S3_INSECURE:-true}"
+            AWS_ENDPOINT_PROTO: "${AWS_ENDPOINT_PROTO:-http}"
+            # Database Connection for Dump (TARGET REPLICA)
+            WORDPRESS_DB_HOST_NAME: "mysql-replica"
+            WORDPRESS_DB_USER: "root" # Use root to ensure full dump permissions
+            WORDPRESS_DB_PASSWORD: "${WORDPRESS_DB_PASSWORD}"
+            WORDPRESS_DB_NAME: "${WORDPRESS_DB_NAME}"
+        volumes:
+            # Mount script and source directories
+            - ./scripts/backup-db.sh:/etc/dockervolumebackup/prerun/backup-db.sh:ro
+            - ./wp-content:/backup/source/wp-content:ro
+            # We dump the DB here (inside the container before archiving)
+            # The offen image backs up everything in /backup/source
+        depends_on:
+            mysql:
+                condition: service_healthy
+            mysql-replica: # Wait for replica
+                 condition: service_healthy
+            minio:
+                 condition: service_healthy
+
+    minio:
+        image: minio/minio:latest
+        command: server /data --console-address ":9001"
+        ports:
+            - "59000:9000"
+            - "59001:9001"
+        environment:
+            MINIO_ROOT_USER: "${AWS_ACCESS_KEY_ID:-minioadmin}"
+            MINIO_ROOT_PASSWORD: "${AWS_SECRET_ACCESS_KEY:-minioadmin}"
+        volumes:
+            - ./storage:/data
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 30s
+            timeout: 20s
+            retries: 3
+
+    miniomc:
+        image: minio/mc
+        depends_on:
+            minio:
+                condition: service_healthy
+        entrypoint: >
+            /bin/sh -c "
+            /usr/bin/mc alias set myminio http://minio:9000 ${AWS_ACCESS_KEY_ID:-minioadmin} ${AWS_SECRET_ACCESS_KEY:-minioadmin};
+            /usr/bin/mc mb myminio/${AWS_S3_BUCKET_NAME:-wordpress-backups};
+            /usr/bin/mc mb myminio/wordpress-uploads;
+            /usr/bin/mc anonymous set public myminio/${AWS_S3_BUCKET_NAME:-wordpress-backups};
+            /usr/bin/mc anonymous set public myminio/wordpress-uploads;
+            exit 0;
+            "
+
 volumes:
     mysql_data:
     redis_data:
-
+    mysql_replica_data:
 
