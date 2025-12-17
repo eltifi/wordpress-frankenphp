@@ -1,8 +1,6 @@
 # Dockerized WordPress on FrankenPHP
 
-[![Build and Push Docker Image](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/build-and-push.yml)
-[![Build and Deploy WordPress](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/build-deploy.yml/badge.svg)](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/build-deploy.yml)
-[![Lint and Validate](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/lint-and-validate.yml/badge.svg)](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/lint-and-validate.yml)
+[![Build](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/ci.yml/badge.svg)](https://github.com/eltifi/wordpress-frankenphp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A high-performance command-line optimized WordPress environment running on [FrankenPHP](https://frankenphp.dev/), utilizing the power of [Caddy Web Server](https://caddyserver.com/) and [Docker](https://www.docker.com/).

@@ -10,8 +10,7 @@ services:
         dns:
             - 8.8.8.8
             - 1.1.1.1
-        build: .
-        image: website:latest
+        image: ghcr.io/eltifi/wordpress-frankenphp:latest
         restart: unless-stopped
         deploy:
             resources:
@@ -122,9 +121,9 @@ services:
             DEBUG_MODE: ${DEBUG_MODE:-}
             # Custom PHP Config Path (loading default + custom volume)
             PHP_INI_SCAN_DIR: ":/usr/local/etc/php/conf.d:/data/caddy/php"
-        #volumes:
-        #    - ./wp-content:/var/www/html/wp-content
-        #    - ./wp-config.php:/var/www/html/wp-config.php
+    #volumes:
+    #    - ./wp-content:/var/www/html/wp-content
+    #    - ./wp-config.php:/var/www/html/wp-config.php
 
     mysql:
         expose:
