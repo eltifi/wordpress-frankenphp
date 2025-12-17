@@ -1,0 +1,92 @@
+{
+	skip_install_trust
+	# auto_https off
+	
+	{$CADDY_GLOBAL_OPTIONS:}
+	
+	frankenphp {
+		{$FRANKENPHP_CONFIG:}
+	}
+}
+
+# Shared WordPress configuration
+(wordpress) {
+	root * {$CADDY_SERVER_ROOT:/var/www/html}
+	
+	# Compression (gzip only for Alpine compatibility)
+	encode zstd br gzip
+
+	# Security Headers & Header Removal
+	header {
+		# Remove identifying headers
+		-Server
+		-X-Powered-By
+		
+		# Security Headers
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-XSS-Protection "1; mode=block"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+		
+		defer
+	}
+
+	# Cache Control for Static Assets (Browser Caching)
+	@static {
+		file
+		path *.css *.js *.jpg *.jpeg *.png *.gif *.ico *.svg *.webp *.woff *.woff2
+	}
+	header @static Cache-Control "max-age=31536000, public"
+
+	# ------------------------------------------------------------------
+	# Image Optimization via Imgproxy
+	# ------------------------------------------------------------------
+	@images {
+		path *.jpg *.jpeg *.png *.gif *.webp
+		not header User-Agent *imgproxy*
+	}
+
+	handle @images {
+		# Rewrite the path to match imgproxy's URL structure
+		# Format: /insecure/plain/http://web{uri}@webp
+		# We use http://web because 'web' is the docker service name
+		rewrite * /insecure/plain/http://web{uri}@webp
+		reverse_proxy imgproxy:8080 {
+			header_up Host imgproxy
+		}
+	}
+
+	# Disable direct access to sensitive files and xmlrpc
+	@sensitive {
+		path /wp-config.php* /.htaccess /.env *.sql *.bak *.log *.old .git/* /xmlrpc.php
+	}
+	respond @sensitive 403
+
+	# WordPress rewrite rules
+	@notStatic {
+		not path /wp-admin* /wp-includes* /wp-content/plugins* /wp-content/themes*
+		not path *.js *.css *.gif *.jpg *.jpeg *.png *.svg *.webp *.ico *.woff *.woff2
+		file !{path}
+	}
+	rewrite @notStatic /index.php?{query}
+
+	# PHP handler
+	php_server
+
+	# File server for static files
+	file_server
+}
+
+# HTTP listener
+:80 {
+	import wordpress
+}
+
+# HTTPS listener with TLS configuration
+# CADDY_SERVER_TLS empty = local certs, or set to domain for Let's Encrypt
+https://{$SERVER_NAME:localhost} {
+	import /data/caddy/tls_config
+	import wordpress
+}

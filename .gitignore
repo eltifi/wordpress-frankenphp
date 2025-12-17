@@ -1,0 +1,86 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE and Editor
+.vscode/
+.idea/
+.phpstorm.meta.php
+_ide_helper.php
+_ide_helper_models.php
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.project
+.pydevproject
+.settings/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+.AppleDouble
+.LSOverride
+._*
+
+# Node (if using node tools)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build and artifacts
+dist/
+build/
+
+# Logs
+logs/
+*.log
+debug.log
+
+# Cache and temporary files
+*.tmp
+.cache/
+tmp/
+
+# WordPress-specific (root level)
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+wp-content/backup-*
+wp-content/ai-*.json
+
+# Database dumps
+*.sql
+*.sql.gz
+database.sql
+
+# Backup files
+*.bak
+*.backup
+
+# Security and backup plugins
+wp-content/updraft/
+wp-content/aiowps_backups/
+
+# Documentation (keep docs/ untracked in git)
+/docs
+
+# Composer
+vendor/
+composer.lock
+
+# Vagrant
+.vagrant/
+Vagrantfile
+
+# Project backups and temporary content
+/wp-content1
+wp-content/*/backup*
+wp-content/*/backups/
+upgrade-temp-backup/
+public/worker.php.bak
+conf.d/*.bak

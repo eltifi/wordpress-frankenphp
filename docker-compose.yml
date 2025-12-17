@@ -1,0 +1,264 @@
+name: wordpress
+
+services:
+
+    web:
+        ports:
+            - "80:80"
+            - "443:443"
+            - "443:443/udp"
+        dns:
+            - 8.8.8.8
+            - 1.1.1.1
+        build: .
+        image: website:latest
+        restart: unless-stopped
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 1G
+                reservations:
+                    cpus: '0.25'
+                    memory: 512M
+        healthcheck:
+            test: [ "CMD", "curl", "-f", "http://localhost/wp-admin/admin-ajax.php" ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+        environment:
+            TZ: ${TZ:-America/New_York}
+            # WordPress authentication keys and salts (empty = randomly generated at runtime)
+            WORDPRESS_AUTH_KEY: ${WORDPRESS_AUTH_KEY}
+            WORDPRESS_SECURE_AUTH_KEY: ${WORDPRESS_SECURE_AUTH_KEY}
+            WORDPRESS_LOGGED_IN_KEY: ${WORDPRESS_LOGGED_IN_KEY}
+            WORDPRESS_NONCE_KEY: ${WORDPRESS_NONCE_KEY}
+            WORDPRESS_AUTH_SALT: ${WORDPRESS_AUTH_SALT}
+            WORDPRESS_SECURE_AUTH_SALT: ${WORDPRESS_SECURE_AUTH_SALT}
+            WORDPRESS_LOGGED_IN_SALT: ${WORDPRESS_LOGGED_IN_SALT}
+            WORDPRESS_NONCE_SALT: ${WORDPRESS_NONCE_SALT}
+            # WordPress additional configuration
+            WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
+            WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-false}
+            WORDPRESS_CONFIG_EXTRA: ${WORDPRESS_CONFIG_EXTRA}
+            # WordPress optimization & feature configuration
+            WORDPRESS_REDIS_HOST: ${WORDPRESS_REDIS_HOST:-redis}
+            WORDPRESS_REDIS_PORT: ${WORDPRESS_REDIS_PORT:-6379}
+            WORDPRESS_REDIS_DATABASE: ${WORDPRESS_REDIS_DATABASE:-0}
+            WORDPRESS_REDIS_TIMEOUT: ${WORDPRESS_REDIS_TIMEOUT:-1}
+            WORDPRESS_REDIS_READ_TIMEOUT: ${WORDPRESS_REDIS_READ_TIMEOUT:-1}
+            WORDPRESS_REDIS_PASSWORD: ${WORDPRESS_REDIS_PASSWORD}
+            WORDPRESS_REDIS_PREFIX: ${WORDPRESS_REDIS_PREFIX}
+            WORDPRESS_AUTO_UPDATE_CORE: ${WORDPRESS_AUTO_UPDATE_CORE:-minor}
+            WORDPRESS_AUTO_UPDATE_PLUGINS: ${WORDPRESS_AUTO_UPDATE_PLUGINS:-false}
+            WORDPRESS_AUTO_UPDATE_THEMES: ${WORDPRESS_AUTO_UPDATE_THEMES:-false}
+            WORDPRESS_CONCATENATE_SCRIPTS: ${WORDPRESS_CONCATENATE_SCRIPTS:-false}
+            WORDPRESS_COMPRESS_SCRIPTS: ${WORDPRESS_COMPRESS_SCRIPTS:-false}
+            WORDPRESS_COMPRESS_CSS: ${WORDPRESS_COMPRESS_CSS:-false}
+            WORDPRESS_MEMORY_LIMIT: ${WORDPRESS_MEMORY_LIMIT:-1024M}
+            WORDPRESS_MAX_MEMORY_LIMIT: ${WORDPRESS_MAX_MEMORY_LIMIT:-1536M}
+            WORDPRESS_DISALLOW_FILE_EDIT: ${WORDPRESS_DISALLOW_FILE_EDIT:-true}
+            WORDPRESS_EMPTY_TRASH_DAYS: ${WORDPRESS_EMPTY_TRASH_DAYS:-30}
+            WORDPRESS_AUTO_SAVE_INTERVAL: ${WORDPRESS_AUTO_SAVE_INTERVAL:-300}
+            # Automated Installation Configuration
+            WORDPRESS_URL: ${WORDPRESS_URL:-http://localhost}
+            WORDPRESS_TITLE: ${WORDPRESS_TITLE:-My Docker WordPress}
+            WORDPRESS_ADMIN_USER: ${WORDPRESS_ADMIN_USER:-admin}
+            WORDPRESS_ADMIN_PASSWORD: ${WORDPRESS_ADMIN_PASSWORD:-password}
+            WORDPRESS_ADMIN_EMAIL: ${WORDPRESS_ADMIN_EMAIL:-admin@example.com}
+            # SMTP Configuration
+            WORDPRESS_SMTP_HOST: ${WORDPRESS_SMTP_HOST}
+            WORDPRESS_SMTP_PORT: ${WORDPRESS_SMTP_PORT}
+            WORDPRESS_SMTP_USER: ${WORDPRESS_SMTP_USER}
+            WORDPRESS_SMTP_PASSWORD: ${WORDPRESS_SMTP_PASSWORD}
+            WORDPRESS_SMTP_FROM: ${WORDPRESS_SMTP_FROM}
+            WORDPRESS_SMTP_FROM_NAME: ${WORDPRESS_SMTP_FROM_NAME}
+            # General Settings Configuration
+            WORDPRESS_TAGLINE: ${WORDPRESS_TAGLINE}
+            WORDPRESS_MEMBERSHIP: ${WORDPRESS_MEMBERSHIP}
+            WORDPRESS_DEFAULT_ROLE: ${WORDPRESS_DEFAULT_ROLE}
+            WORDPRESS_LANGUAGE: ${WORDPRESS_LANGUAGE}
+            WORDPRESS_TIMEZONE: ${WORDPRESS_TIMEZONE}
+            WORDPRESS_DATE_FORMAT: ${WORDPRESS_DATE_FORMAT}
+            WORDPRESS_TIME_FORMAT: ${WORDPRESS_TIME_FORMAT}
+            WORDPRESS_START_OF_WEEK: ${WORDPRESS_START_OF_WEEK}
+            # Advanced Configuration
+            WORDPRESS_CONTENT_URL: ${WORDPRESS_CONTENT_URL}
+            WORDPRESS_CONTENT_DIR: ${WORDPRESS_CONTENT_DIR}
+            WORDPRESS_DB_QUERY_TIMEOUT: ${WORDPRESS_DB_QUERY_TIMEOUT:-5}
+            WORDPRESS_FORCE_SSL_ADMIN: ${WORDPRESS_FORCE_SSL_ADMIN:-true}
+            WORDPRESS_FORCE_SSL_LOGIN: ${WORDPRESS_FORCE_SSL_LOGIN:-true}
+            WORDPRESS_CACHE_KEY_SALT: ${WORDPRESS_CACHE_KEY_SALT}
+            # Database configuration
+            WORDPRESS_DB_HOST: ${WORDPRESS_DB_HOST:-mysql:3306}
+            WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+            WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
+            WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+            WORDPRESS_DB_CHARSET: ${WORDPRESS_DB_CHARSET:-utf8mb4}
+            WORDPRESS_DB_COLLATE: ${WORDPRESS_DB_COLLATE:-utf8mb4_unicode_ci}
+            # FrankenPHP configuration
+            FORCE_HTTPS: ${FORCE_HTTPS:-0}
+            # Worker mode: dramatically improves performance (~70% faster)
+            # Syntax: worker <script.php> [num_workers]
+            FRANKENPHP_CONFIG: ${FRANKENPHP_CONFIG:-}
+            # Number of PHP threads (default: 2x CPU cores)
+            FRANKENPHP_NUM_THREADS: ${FRANKENPHP_NUM_THREADS:-}
+            # Maximum PHP threads at runtime (can scale up if needed)
+            FRANKENPHP_MAX_THREADS: ${FRANKENPHP_MAX_THREADS:-auto}
+            # Restart worker after N requests to prevent memory leaks
+            MAX_REQUESTS: ${MAX_REQUESTS:-100000}
+            # Caddy configuration
+            CADDY_SERVER_OPTIONS: ${CADDY_SERVER_OPTIONS}
+            CADDY_SERVER_TLS: ${CADDY_SERVER_TLS:-internal}
+            CADDY_SERVER_ROOT: ${CADDY_SERVER_ROOT:-/var/www/html}
+            SERVER_NAME: ${SERVER_NAME:-localhost}
+            # Debug mode (set to 'debug' to enable)
+            DEBUG_MODE: ${DEBUG_MODE:-}
+            # Custom PHP Config Path (loading default + custom volume)
+            PHP_INI_SCAN_DIR: ":/usr/local/etc/php/conf.d:/data/caddy/php"
+        #volumes:
+        #    - ./wp-content:/var/www/html/wp-content
+        #    - ./wp-config.php:/var/www/html/wp-config.php
+
+    mysql:
+        expose:
+            - 3306
+        image: mariadb:12
+        restart: unless-stopped
+        healthcheck:
+            test: "mariadb-admin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: 2G
+                reservations:
+                    cpus: '0.5'
+                    memory: 1G
+        command:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            # CONNECTION MANAGEMENT
+            - --max_connections=200
+            - --connect_timeout=10
+            - --max_connect_errors=100
+            - --interactive_timeout=3600
+            - --wait_timeout=3600
+            # SECURITY
+            - --skip-name-resolve
+            - --bind-address=0.0.0.0
+            - --symbolic-links=0
+            - --local-infile=0
+            - --skip-external-locking
+            # NETWORK PERFORMANCE
+            - --max_allowed_packet=64M
+            - --net_buffer_length=16K
+            # InnoDB (WordPress Primary Engine)
+            - --innodb_buffer_pool_size=512M
+            - --innodb_buffer_pool_instances=8
+            - --innodb_log_file_size=100M
+            - --innodb_flush_method=O_DIRECT
+            - --innodb_flush_log_at_trx_commit=2
+            - --innodb_file_per_table=1
+            - --innodb_autoinc_lock_mode=2
+            - --innodb_read_io_threads=8
+            - --innodb_write_io_threads=8
+            - --innodb_io_capacity=500
+            - --innodb_io_capacity_max=1000
+            - --innodb_adaptive_hash_index=1
+            - --innodb_lock_wait_timeout=50
+            # MEMORY-EFFICIENT TABLE HANDLING
+            - --tmp_table_size=32M
+            - --max_heap_table_size=32M
+            - --thread_cache_size=100
+            - --thread_stack=256K
+            - --table_definition_cache=2000
+            - --table_open_cache=4000
+            # QUERY OPTIMIZATION (Safe for Normal Operations)
+            - --sort_buffer_size=2M
+            - --bulk_insert_buffer_size=16M
+            - --read_rnd_buffer_size=2M
+            - --read_buffer_size=512K
+            - --join_buffer_size=512K
+            - --binlog_cache_size=32K
+            # MyISAM (Minimal - WordPress uses InnoDB)
+            - --key_buffer_size=1M
+            # QUERY CACHE (Disabled in MariaDB 10.6+)
+            - --query_cache_type=OFF
+            # SQL COMPLIANCE
+            - --sql-mode=STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+        environment:
+            TZ: ${TZ:-America/New_York}
+            # Use WORDPRESS_DB_ variables to avoid duplication
+            MYSQL_DATABASE: ${WORDPRESS_DB_NAME}
+            MYSQL_USER: ${WORDPRESS_DB_USER}
+            MYSQL_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+            MYSQL_ROOT_PASSWORD: ${WORDPRESS_DB_PASSWORD}
+            MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST:-localhost}
+            # Performance settings
+            MYSQL_INITDB_SKIP_TZINFO: 'yes'
+        volumes:
+            - mysql_data:/var/lib/mysql
+            - ./seed:/docker-entrypoint-initdb.d
+
+    redis:
+        image: redis:alpine
+        command: redis-server --appendonly yes --appendfsync everysec --loglevel warning
+        restart: unless-stopped
+        healthcheck:
+            test: [ "CMD", "redis-cli", "ping" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 512M
+                reservations:
+                    cpus: '0.25'
+                    memory: 256M
+        environment:
+            TZ: ${TZ:-America/New_York}
+        volumes:
+            - redis_data:/data
+
+    imgproxy:
+        image: darthsim/imgproxy:latest
+        restart: unless-stopped
+        environment:
+            # Security: Allow internal network and loopback access only
+            IMGPROXY_ALLOWED_SOURCES: "http://web,local://"
+            # Optimization: Force WebP output
+            IMGPROXY_ENFORCE_WEBP: "true"
+            # Optimization: Detect WebP support (though we enforce it, this is good practice)
+            IMGPROXY_ENABLE_WEBP_DETECTION: "true"
+            # Security: Limit memory usage and image size to prevent DoS
+            IMGPROXY_MAX_SRC_RESOLUTION: "30.0"
+            IMGPROXY_MEMORY: "512"
+            IMGPROXY_CONCURRENCY: "2"
+        deploy:
+            resources:
+                limits:
+                    cpus: '0.5'
+                    memory: 512M
+                reservations:
+                    cpus: '0.25'
+                    memory: 256M
+
+volumes:
+    mysql_data:
+    redis_data:
+
+

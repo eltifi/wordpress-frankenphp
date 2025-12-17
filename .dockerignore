@@ -1,0 +1,15 @@
+*
+!Caddyfile
+!wp-config-docker.php
+!wp-content/
+!conf.d/
+!public/
+.git
+.gitignore
+*.md
+.env*
+docker-compose.yml
+wp-content1/
+node_modules/
+docs/
+!entrypoint.sh

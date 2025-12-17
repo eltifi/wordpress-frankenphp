@@ -1,0 +1,62 @@
+# WordPress uploads directory
+/uploads/
+uploads/**
+
+# Cache directories
+/cache/
+/wpo-cache/
+/wpo-minify/
+cache/**
+wpo-cache/**
+wpo-minify/**
+
+# Backup and restore plugins
+/updraft/
+/aiowps_backups/
+updraft/**
+aiowps_backups/**
+
+# Transient cache and temporary files
+/upgrade/
+/upgrade-temp-backup/
+upgrade/**
+upgrade-temp-backup/**
+
+# Generated files and logs
+debug.log
+*.log
+*.tmp
+
+# Third-party generated files
+/backup-*
+/ai-*.json
+
+# Version control subdirectory (sometimes created by plugins)
+/v/
+v/**
+
+# Object cache and advanced cache (often generated)
+object-cache.php
+advanced-cache.php
+
+# Plugin and theme backups
+*/backup*
+*/backups/
+*/*.backup
+
+# OS files
+.DS_Store
+Thumbs.db
+._*
+
+# IDE files
+.vscode/
+.idea/
+
+# Allow these to be tracked (typically)
+!.gitkeep
+!/plugins/
+!/themes/
+!/mu-plugins/
+!/index.html
+!/index.php
