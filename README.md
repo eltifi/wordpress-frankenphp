@@ -231,17 +231,8 @@ The local `wp-content/` directory is copied directly into the Docker image durin
 - Enable Redis caching (already configured)
 - Check container resources: `docker stats`
 
-## Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to:
-- Report bugs
-- Suggest features
-- Submit pull requests
-- Follow our code standards
-
 ## Support
 
-- 📖 **Documentation**: See [docs/](docs/) folder for additional guides
 - 🐛 **Issues**: Report bugs on [GitHub Issues](https://github.com/eltifi/wordpress-frankenphp/issues)
 - 💬 **Discussions**: Join us on [GitHub Discussions](https://github.com/eltifi/wordpress-frankenphp/discussions)
 
